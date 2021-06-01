@@ -238,7 +238,7 @@ def main():
             optimizerG.step()
 
             iteration_end_time = time.time()
-            interation_end_time_app = iteration_end_time - init_time_begin
+            iteration_end_time_app = iteration_end_time - init_time_begin
             iteration_end_time = iteration_end_time - iteration_start_time
             print(f"[epoch: {epoch}/{argv.num_epochs}][iteration: {i}/{len(train_loader)}][rank: {rank}] " \
                   f"Loss_D: {errD.item():.4f}, Loss_G: {errG.item():.4f}, " \
