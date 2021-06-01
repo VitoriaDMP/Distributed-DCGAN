@@ -140,6 +140,9 @@ def main():
     argv = parser.parse_args()
     print(argv)
 
+    # Initialization time begin
+    init_time_begin = time.time()
+
     # We need to use seeds to make sure that the models initialized in different processes are the same
     set_random_seeds(argv.seed, argv.cuda)
     print(f"Using GPU: {argv.cuda}")
@@ -185,6 +188,11 @@ def main():
     # Lets start all together. Optimizers all have barrier also
     torch.distributed.barrier()
 
+
+    # Initialization time ends
+    init_time_end = time.time() - init_time_begin
+    print(f"Rank,{rank}, Initialization Time: {init_time_end}")
+
     for epoch in range(argv.num_epochs):
         epoch_start_time = time.time()
         print(f"Rank: {rank}, Epoch: {epoch}, Training ...")
@@ -229,20 +237,27 @@ def main():
             # A barrier here
             optimizerG.step()
 
-            iteration_end_time = time.time()-iteration_start_time
+            iteration_end_time = time.time()
+            interation_end_time_app = iteration_end_time - init_time_begin
+            iteration_end_time = iteration_end_time - iteration_start_time
             print(f"[epoch: {epoch}/{argv.num_epochs}][iteration: {i}/{len(train_loader)}][rank: {rank}] " \
                   f"Loss_D: {errD.item():.4f}, Loss_G: {errG.item():.4f}, " \
                   f"D(x): {D_x:.4f}, D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}, " \
                   f"iteration time: {iteration_end_time:.4f}s")
+            
+            print(f"Rank,{rank},Epoch,{epoch},Iteration,{i},It. time,{iteration_end_time:.4f}s,Elapsed time,{iteration_end_time_app:.4f}s")
 
             if i%100 == 0:
                 vutils.save_image(real_cpu, f'{argv.out_folder}/real_samples_rank_{rank}_epoch_{epoch}_iter_{i}.png', normalize=True)
                 fake = netG(fixed_noise)
                 vutils.save_image(fake.detach(), f'{argv.out_folder}/fake_samples_rank_{rank}_epoch_{epoch}_iter_{i}.png', normalize=True)
                 torch.distributed.barrier()
-
-        epoch_end_time = time.time()-epoch_start_time
+            
+        epoch_end_time = time.time()
+        epoch_end_time_app = epoch_end_time - init_time_begin
+        epoch_end_time = epoch_end_time - epoch_start_time
         print(f"[rank: {rank}] Epoch {epoch} took: {epoch_end_time:.4f} seconds")
+        print(f"Rank,{rank},Epoch,{epoch},Epoch time,{epoch_end_time:.4f}s,Elapsed time,{epoch_end_time_app:.4f}s")
 
     torch.distributed.destroy_process_group()
 
