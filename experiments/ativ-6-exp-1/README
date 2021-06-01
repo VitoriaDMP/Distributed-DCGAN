@@ -1,0 +1,28 @@
+Para executar os passos da atividade 6 foi criada uma instância na conta do AWS utilizando a imagem Ubuntu Server 20.04 LTS (HVM), utilizando o tipo de instância c5.xlarge. 
+
+O script de inicialização utilizado foi:
+#!/bin/bash
+sudo apt-get update
+sudo apt-get install -y wget make build-essential git
+
+Após esse passo, o tamanho foi alterado para 16GB e executada a instância. 
+
+Após acessar a máquina, para instalar o docker dentro da instância foi executado o comando: 
+sudo snap install docker
+
+Foi feito um clone do repositório Distributed-DCGAN e, por fim, foram executados os comandos, como na atividade 5:
+1. Download e extração do dataset utilizado (CIFAR-10):
+mkdir cifar10 && cd cifar10
+wget --no-check-certificate https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
+tar -xvf cifar-10-python.tar.gz
+cd ..
+
+2. Configurei a imagem docker utilizada:
+sudo docker build -t dist_dcgan .
+
+3. Executei o comando abaixo em um terminal:
+sudo docker run --env OMP_NUM_THREADS=1 --rm --network=host -v=$(pwd):/root dist_dcgan:latest python -m torch.distributed.launch --nproc_per_node=1 --nnodes=2 --node_rank=0 --master_addr="172.17.0.1" --master_port=1234 dist_dcgan.py --dataset cifar10 --dataroot ./cifar10 --batch_size 16 --num_epochs 1
+
+4. Executei o comando abaixo em outro terminal:
+sudo docker run --env OMP_NUM_THREADS=1 --rm --network=host -v=$(pwd):/root dist_dcgan:latest python -m torch.distributed.launch --nproc_per_node=1 --nnodes=2 --node_rank=1 --master_addr="172.17.0.1" --master_port=1234 dist_dcgan.py --dataset cifar10 --dataroot ./cifar10 --batch_size 16 --num_epochs 1
+
